@@ -1,40 +1,117 @@
 """
-Time Series Forecasting Package
-
-A professional time series forecasting solution for PJM energy consumption data.
-This package provides comprehensive tools for data processing, model training,
-and analysis of time series data.
-
-Authors: DAT301m Lab 4 Team
-Version: 1.0.0
-License: MIT
+Time Series Forecasting Module
 """
 
-__version__ = "1.0.0"
-__author__ = "DAT301m Lab 4 Team"
-__email__ = "lab4@example.com"
-__description__ = "Professional Time Series Forecasting Solution for PJM Energy Data"
+from .core import (
+    # Data loading
+    DataLoader,
+    
+    # Data preprocessing
+    DataCleaner,
+    DataTransformer,
+    TimeSeriesFeatureEngineer,
+    
+    # Data validation
+    DataValidator,
+    
+    # Window generation
+    WindowGenerator
+)
 
-# Import main components
-from .core.data_processor import DataProcessor
-from .core.window_generator import WindowGenerator
-from .models.model_factory import ModelFactory
-from .models.model_trainer import ModelTrainer
-from .pipeline.forecasting_pipeline import ForecastingPipeline
-from .analysis.pjm_analyzer import PJMDataAnalyzer
-from .analysis.lab4_interface import DAT301mLab4Interface
+from .models import (
+    # Base
+    BaseTimeSeriesModel,
+    
+    # Traditional models
+    LinearRegressionModel,
+    ARIMAModel,
+    
+    # Deep learning models
+    RNNModel,
+    GRUModel,
+    LSTMModel,
+    TransformerModel,
+    
+    # Factory
+    ModelFactory
+)
 
-# Package-level configuration
-import logging
-logging.getLogger(__name__).addHandler(logging.NullHandler())
+from .pipeline import (
+    # Base
+    BasePipeline,
+    
+    # Pipelines
+    DataPipeline,
+    ModelPipeline,
+    ForecastingPipeline
+)
 
-# Public API
+from .analysis import (
+    # Data Analysis
+    get_basic_statistics,
+    get_seasonal_statistics,
+    get_rolling_statistics,
+    analyze_data_distribution,
+    detect_anomalies,
+    detect_seasonality,
+    detect_trends,
+    
+    # Visualization
+    plot_time_series,
+    plot_seasonal_patterns,
+    plot_distribution,
+    plot_trends,
+    plot_anomalies,
+    plot_correlation,
+    create_report_plots,
+    
+    # Lab Interface
+    Lab4Interface,
+    TaskExecutor,
+    ResultManager
+)
+
 __all__ = [
-    "DataProcessor",
-    "WindowGenerator", 
-    "ModelFactory",
-    "ModelTrainer",
-    "ForecastingPipeline",
-    "PJMDataAnalyzer",
-    "DAT301mLab4Interface",
+    # Core
+    'DataLoader',
+    'DataCleaner',
+    'DataTransformer',
+    'TimeSeriesFeatureEngineer',
+    'DataValidator',
+    'WindowGenerator',
+    
+    # Models
+    'BaseTimeSeriesModel',
+    'LinearRegressionModel',
+    'ARIMAModel',
+    'RNNModel',
+    'GRUModel',
+    'LSTMModel',
+    'TransformerModel',
+    'ModelFactory',
+    
+    # Pipeline
+    'BasePipeline',
+    'DataPipeline',
+    'ModelPipeline',
+    'ForecastingPipeline',
+    
+    # Analysis
+    'get_basic_statistics',
+    'get_seasonal_statistics',
+    'get_rolling_statistics',
+    'analyze_data_distribution',
+    'detect_anomalies',
+    'detect_seasonality',
+    'detect_trends',
+    'plot_time_series',
+    'plot_seasonal_patterns',
+    'plot_distribution',
+    'plot_trends',
+    'plot_anomalies',
+    'plot_correlation',
+    'create_report_plots',
+    'Lab4Interface',
+    'TaskExecutor',
+    'ResultManager'
 ] 

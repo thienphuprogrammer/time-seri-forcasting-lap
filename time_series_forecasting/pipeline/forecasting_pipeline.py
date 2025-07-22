@@ -5,10 +5,10 @@ from typing import Dict, Any, Optional, List, Tuple
 import warnings
 warnings.filterwarnings('ignore')
 
-from ..core.data_processor import DataProcessor
-from ..core.window_generator import WindowGenerator
-from ..models.model_factory import ModelFactory
-from ..models.model_trainer import ModelTrainer
+from time_series_forecasting.core.data_processor import DataProcessor
+from time_series_forecasting.core.window_generator import WindowGenerator
+from time_series_forecasting.models.factory.model_factory import ModelFactory
+from time_series_forecasting.models.training.model_trainer import ModelTrainer
 
 class ForecastingPipeline:
     """
@@ -187,6 +187,9 @@ class ForecastingPipeline:
         X_val, y_val = self._dataset_to_numpy(val_dataset)
         X_test, y_test = self._dataset_to_numpy(test_dataset)
         
+        # Initialize results dictionary
+        self.trained_models = {}
+        
         # 1. Linear Regression
         print("\nTraining Linear Regression...")
         lr_model = self.model_factory.create_linear_regression()
@@ -199,6 +202,13 @@ class ForecastingPipeline:
             lr_model, 'linear_regression', X_test, y_test, 
             self.data_processor.scaler
         )
+        
+        # Store Linear Regression results
+        self.trained_models['linear_regression'] = {
+            'model': lr_model,
+            'metrics': lr_metrics,
+            'history': None  # Linear regression doesn't have training history
+        }
         
         # 2. ARIMA (if data is suitable)
         if self.processed_data is not None and len(self.processed_data) > 100:  # Need sufficient data for ARIMA
@@ -213,9 +223,14 @@ class ForecastingPipeline:
                 
                 # Fit ARIMA
                 fitted_arima = arima_model.fit()
-                self.trained_models['arima'] = fitted_arima
                 
-                # For ARIMA, we need to evaluate differently
+                # Store ARIMA results
+                self.trained_models['arima'] = {
+                    'model': fitted_arima,
+                    'metrics': None,  # Will be populated during evaluation
+                    'history': None  # ARIMA doesn't have training history
+                }
+                
                 print("ARIMA training completed.")
                 
             except Exception as e:
@@ -233,6 +248,13 @@ class ForecastingPipeline:
             rf_model, 'random_forest', X_test, y_test,
             self.data_processor.scaler
         )
+        
+        # Store Random Forest results
+        self.trained_models['random_forest'] = {
+            'model': rf_model,
+            'metrics': rf_metrics,
+            'history': None  # Random forest doesn't have training history
+        }
         
         print("\nBaseline models training completed.")
         
