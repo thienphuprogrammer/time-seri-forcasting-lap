@@ -1,0 +1,56 @@
+{
+  "task": "Task 2 - Baseline Models",
+  "timestamp": "20250723_090902",
+  "models_trained": [
+    "Linear_Regression",
+    "ARIMA"
+  ],
+  "models_saved": {},
+  "model_results": {
+    "Linear_Regression": {
+      "model_type": "LinearRegressionModel",
+      "architecture": {
+        "name": "linear",
+        "config": {},
+        "is_fitted": true
+      },
+      "training_params": {},
+      "metrics": {
+        "mae": 0.007785115588521507,
+        "rmse": 0.010899842288784276,
+        "r2": 0.9960161915269445,
+        "mape": 1.846696520276432
+      },
+      "training_time": "N/A",
+      "convergence_epoch": "N/A"
+    },
+    "ARIMA": {
+      "model_type": "ARIMAModel",
+      "architecture": {
+        "name": "arima",
+        "config": {
+          "order": [
+            2,
+            1,
+            2
+          ]
+        },
+        "is_fitted": true
+      },
+      "training_params": {},
+      "metrics": {
+        "mae": 0.1535591453359374,
+        "rmse": 0.18450263781140624,
+        "r2": -0.14260192041495978,
+        "mape": 45.18514367999285
+      },
+      "training_time": "N/A",
+      "convergence_epoch": "N/A"
+    }
+  },
+  "training_summary": {
+    "total_models": 2,
+    "best_model": "Linear_Regression",
+    "best_mae": 0.007785115588521507
+  }
+}

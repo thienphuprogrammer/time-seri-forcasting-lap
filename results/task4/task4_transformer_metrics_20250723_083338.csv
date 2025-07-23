@@ -1,0 +1,2 @@
+Model,Type,Attention_Heads,Model_Dimension,Transformer_Layers,Feed_Forward_Dim,Batch_Size,MAE,RMSE,MAPE,CUDA_Optimized,Mixed_Precision
+Transformer,Transformer,8,128,4,512,1024,0.076386177346957,0.09769609358054714,21.14588309702559,True,False

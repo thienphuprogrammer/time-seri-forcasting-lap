@@ -1,0 +1,108 @@
+{
+  "task": "Task 3 - Deep Learning Models",
+  "timestamp": "20250723_090805",
+  "gpu_enabled": true,
+  "models_trained": [
+    "RNN_GPU_Optimized",
+    "Deep_GRU_GPU",
+    "Advanced_LSTM_GPU"
+  ],
+  "models_saved": {},
+  "model_results": {
+    "RNN_GPU_Optimized": {
+      "model_type": "RNNModel",
+      "architecture": {
+        "units": 512,
+        "layers": 3,
+        "dropout": 0.3,
+        "optimizer": "adamw",
+        "batch_size": 1024
+      },
+      "training_params": {
+        "epochs": 20,
+        "patience": 15,
+        "verbose": 1
+      },
+      "metrics": {
+        "mae": 0.06794923171578787,
+        "rmse": 0.08428085141462631,
+        "mape": 16.220239182420144,
+        "r2": 0.7618142083518045
+      },
+      "gpu_optimized": true,
+      "cuda_optimizations": {
+        "mixed_precision": false,
+        "batch_size_optimized": true
+      }
+    },
+    "Deep_GRU_GPU": {
+      "model_type": "GRUModel",
+      "architecture": {
+        "units": 512,
+        "layers": 4,
+        "dropout": 0.5,
+        "optimizer": "adamw",
+        "batch_size": 1024
+      },
+      "training_params": {
+        "epochs": 20,
+        "patience": 25,
+        "verbose": 1,
+        "validation_split": 0.15,
+        "reduce_lr_patience": 12,
+        "min_lr": 1e-07
+      },
+      "metrics": {
+        "mae": 0.16612260839253296,
+        "rmse": 0.19982867088425427,
+        "mape": 38.40034114300099,
+        "r2": -0.33897855755668704
+      },
+      "gpu_optimized": true,
+      "cuda_optimizations": {
+        "mixed_precision": false,
+        "batch_size_optimized": true
+      }
+    },
+    "Advanced_LSTM_GPU": {
+      "model_type": "LSTMModel",
+      "architecture": {
+        "units": 512,
+        "layers": 4,
+        "dropout": 0.4,
+        "optimizer": "adamw",
+        "batch_size": 1024
+      },
+      "training_params": {
+        "epochs": 20,
+        "patience": 22,
+        "verbose": 1,
+        "validation_split": 0.15,
+        "reduce_lr_patience": 12,
+        "min_lr": 1e-07
+      },
+      "metrics": {
+        "mae": 0.12222871827308868,
+        "rmse": 0.1526245369938043,
+        "mape": 26.878830714942954,
+        "r2": 0.2188998132323845
+      },
+      "gpu_optimized": true,
+      "cuda_optimizations": {
+        "mixed_precision": false,
+        "batch_size_optimized": true
+      }
+    }
+  },
+  "training_summary": {
+    "total_models": 3,
+    "best_model": "RNN_GPU_Optimized",
+    "best_mae": 0.06794923171578787,
+    "gpu_optimizations": true
+  },
+  "hardware_info": {
+    "gpu_available": true,
+    "gpu_count": 1,
+    "tensorflow_version": "2.19.0"
+  }
+}
