@@ -144,15 +144,6 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
-# Plots and outputs
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.svg
-*.pdf
-*.html
-
 # IDE files
 .vscode/
 .idea/
