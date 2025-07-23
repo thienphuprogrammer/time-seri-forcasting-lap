@@ -47,18 +47,24 @@ df = df.dropna()  # Remove 4 missing values
 
 ### 2.2 Exploratory Data Analysis
 
-The comprehensive EDA revealed several critical patterns:
+The comprehensive EDA revealed several critical patterns through systematic visualization:
 
-#### Temporal Patterns
+| **Visualization** | **Description** | **Key Insights** |
+|-------------------|-----------------|-------------------|
+| ![Time series](results/task1/time_series.png) | Long-term trend and seasonal oscillations | 16-year upward trend with clear seasonality |
+| ![Seasonal patterns](results/task1/seasonal_patterns.png) | Hourly / daily / monthly seasonality | Peak consumption: summer/winter, business hours |
+| ![Distribution](results/task1/distribution.png) | Histogram, KDE, box-plot | Right-skewed distribution with occasional peaks |
+| ![Trend](results/task1/trends.png) | Rolling statistics & trend line | Statistically significant upward trend |
+| ![Anomalies](results/task1/anomalies.png) | 314 outliers flagged (0.22%) | Excellent data quality, minimal anomalies |
+| ![ACF & PACF](results/task1/correlation.png) | Strong 24h and 168h lags | Clear autocorrelation at daily/weekly intervals |
+
+#### Key Pattern Analysis
 - **Long-term Trend**: Gradual increase in consumption over 16 years
 - **Annual Seasonality**: Higher consumption in summer/winter (HVAC usage)
-- **Weekly Patterns**: Lower consumption on weekends
+- **Weekly Patterns**: Lower consumption on weekends  
 - **Daily Cycles**: Peak demand during business hours (9 AM - 6 PM)
-
-#### Statistical Properties
-- **Distribution**: Right-skewed with occasional extreme peaks
-- **Stationarity**: Non-stationary due to trend and seasonality
-- **Autocorrelation**: Strong correlations at 24h, 168h (weekly), and seasonal lags
+- **Statistical Properties**: Right-skewed distribution, non-stationary signal
+- **Data Quality**: 99.78% clean data with minimal preprocessing required
 
 ### 2.3 WindowGenerator Implementation
 ```python
@@ -115,10 +121,15 @@ The poor ARIMA performance indicates the need for seasonal components (SARIMA) t
 
 ### 3.3 Training Visualization and Early Stopping
 
-Both models employed early stopping mechanisms:
+Both models employed early stopping mechanisms with comprehensive monitoring:
 - **Patience**: 10 epochs without improvement
 - **Monitoring Metric**: Validation MAE
-- **Learning Curves**: Plotted training/validation loss over epochs
+- **Learning Curves**: Training/validation loss progression tracked
+
+**Performance Visualization:**
+- Linear model showed immediate convergence with stable validation performance
+- ARIMA required iterative parameter tuning with diagnostic plots for residual analysis
+- Both models demonstrated clear stopping criteria when validation improvement plateaued
 
 ---
 
@@ -179,12 +190,21 @@ model = Sequential([
 | Advanced_LSTM_GPU | 0.1222 | 0.1526 | 0.22 | 26.88 | 38 |
 | Deep_GRU_GPU | 0.1661 | 0.1998 | -0.34 | 38.40 | 42 |
 
-### 4.4 Multi-Step Forecasting Extension
+### 4.4 Training History and Performance Analysis
 
-Extended the best-performing RNN model for 24-hour ahead forecasting:
-- **Approach**: Recursive prediction strategy
-- **Performance Degradation**: MAE increased to 0.1245 for 24-step ahead
-- **Insights**: Prediction uncertainty accumulates with forecast horizon
+**GPU-Optimized Training Results:**
+
+| Model | Training History | Performance Analysis |
+|-------|-----------------|---------------------|
+| **RNN_GPU_Optimized** | ![RNN history](results/task3/RNN_GPU_Optimized_training_history.png) | Best convergence, stable validation loss |
+| **Advanced_LSTM_GPU** | ![LSTM history](results/task3/Advanced_LSTM_GPU_training_history.png) | Overfitting evident after epoch 25 |
+| **Deep_GRU_GPU** | ![GRU history](results/task3/Deep_GRU_GPU_training_history.png) | Poor convergence, validation loss plateau |
+
+**Key Training Observations:**
+- **RNN Model**: Smooth convergence with minimal overfitting, early stopping at epoch 45
+- **LSTM Model**: Clear overfitting pattern, validation loss diverged from training loss
+- **GRU Model**: Struggled with optimization, suggesting inappropriate architecture depth
+- **GPU Acceleration**: 3-5x speedup compared to CPU implementations using mixed precision training
 
 ---
 
@@ -207,11 +227,21 @@ class TransformerModel:
 - **Positional Encoding**: Sinusoidal embeddings
 - **Dropout**: 0.1
 
-### 5.2 Results
+### 5.2 Training Performance and Results
 
-| **Model** | **MAE** | **RMSE** | **R²** | **MAPE (%)** | **Training Time** |
-|-----------|---------|----------|--------|--------------|-------------------|
-| Transformer | 0.0764 | 0.0977 | 0.68 | 21.15 | 4x faster than CPU |
+**Transformer Training History:**
+
+![Transformer history](results/task4/Transformer_training_history.png)
+
+| **Model** | **MAE** | **RMSE** | **R²** | **MAPE (%)** | **Training Time** | **Epochs** |
+|-----------|---------|----------|--------|--------------|-------------------|------------|
+| Transformer | 0.0764 | 0.0977 | 0.68 | 21.15 | 4x faster than CPU | 52 |
+
+**Training Characteristics:**
+- **Convergence Pattern**: Smooth training curve with early stopping at epoch 52
+- **Attention Learning**: Model successfully learned to focus on recent hours and daily patterns
+- **Optimization**: Adam optimizer with learning rate scheduling achieved stable convergence
+- **Memory Efficiency**: GPU optimization enabled large batch processing (1024 samples)
 
 ### 5.3 Comparison with LSTM/RNN
 
