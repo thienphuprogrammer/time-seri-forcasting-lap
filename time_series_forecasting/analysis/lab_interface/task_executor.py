@@ -5,9 +5,11 @@ Task Executor Module for Lab Interface
 from typing import Dict, Any, Optional, List
 import pandas as pd # type: ignore
 import numpy as np # type: ignore
+import os
 from datetime import datetime
 from time_series_forecasting.core import WindowGenerator
 from time_series_forecasting.models import ModelFactory
+from time_series_forecasting.utils.visualization.visualization import plot_training_history
 
 class TaskExecutor:
     """
@@ -44,8 +46,12 @@ class TaskExecutor:
         window_config = self.config.get('window_config', {})
         window_config.update(kwargs.get('window_config', {}))
         
+        # Filter valid parameters for WindowGenerator
+        valid_window_params = ['input_width', 'label_width', 'shift', 'train_split', 'val_split', 'test_split', 'label_columns']
+        filtered_window_config = {k: v for k, v in window_config.items() if k in valid_window_params}
+        
         # Create window generator
-        window_generator = WindowGenerator(**window_config)
+        window_generator = WindowGenerator(**filtered_window_config)
         train_data, val_data, test_data = window_generator.split_data(data)
         
         # Store results
@@ -112,15 +118,20 @@ class TaskExecutor:
         # Get configurations
         window_config = self.config.get('window_config', {})
         window_config.update(kwargs.get('window_config', {}))
-        
+
+        # Filter valid parameters for WindowGenerator
+        valid_window_params = ['input_width', 'label_width', 'shift', 'train_split', 'val_split', 'test_split', 'label_columns']
+        filtered_window_config = {k: v for k, v in window_config.items() if k in valid_window_params}
+
         # Create window generator
-        window_generator = WindowGenerator(**window_config)
+        window_generator = WindowGenerator(**filtered_window_config)
         train_df, val_df, test_df = window_generator.split_data(data)
         
         # Train and evaluate models
         models = {}
         predictions = {}
         metrics = {}
+        train_histories: Dict[str, Any] = {}
         
         for model_config in model_configs:
             model_type = model_config['type']
@@ -141,10 +152,12 @@ class TaskExecutor:
             
             # Prepare data based on model type
             if model_type in ['rnn', 'gru', 'lstm', 'transformer']:
-                # Deep learning models need TensorFlow datasets
-                train_data = window_generator.make_dataset(train_df, shuffle=True, batch_size=32)
-                val_data = window_generator.make_dataset(val_df, shuffle=False, batch_size=32) if val_df is not None else None
-                test_data = window_generator.make_dataset(test_df, shuffle=False, batch_size=32)
+                # Deep learning models need TensorFlow datasets with GPU-optimized batch sizes
+                gpu_batch_size = model_config.get('config', {}).get('batch_size', 128)
+                
+                train_data = window_generator.make_dataset(train_df, shuffle=True, batch_size=gpu_batch_size)
+                val_data = window_generator.make_dataset(val_df, shuffle=False, batch_size=gpu_batch_size) if val_df is not None else None
+                test_data = window_generator.make_dataset(test_df, shuffle=False, batch_size=gpu_batch_size)
             else:
                 # Traditional models work with pandas DataFrames
                 train_data = train_df
@@ -173,6 +186,17 @@ class TaskExecutor:
             
             # Store model
             models[model_name] = model
+
+            # Store training history
+            if hasattr(train_history, 'history'):
+                train_histories[model_name] = train_history.history
+                # Plot and save training history
+                plot_dir = self.config.get('results_dir', 'results')
+                plot_path = os.path.join(plot_dir, task_name, f"{model_name}_training_history.png")
+                os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+                plot_training_history(train_history.history, save_path=plot_path, show=False)
+            else:
+                train_histories[model_name] = train_history
         
         # Store results
         results = {
@@ -180,14 +204,15 @@ class TaskExecutor:
                 name: {
                     'type': model.__class__.__name__,
                     'config': model.get_params(),
-                    'metrics': metrics[name]
+                    'metrics': metrics[name],
+                    'history': train_histories[name]
                 }
                 for name, model in models.items()
             },
             'predictions': {
                 name: pred.tolist() if isinstance(pred, np.ndarray) else pred
                 for name, pred in predictions.items()
-            }
+            },
         }
         
         self.results[task_name] = results
@@ -196,7 +221,6 @@ class TaskExecutor:
             'timestamp': datetime.now(),
             'results': results
         })
-        
         return results
     
     def get_summary(self) -> Dict[str, Any]:

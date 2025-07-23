@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+from pathlib import Path
 
 def plot_metrics(metrics: Dict[str, float],
                  figsize: tuple = (15, 5)) -> None:
@@ -64,7 +65,9 @@ def plot_time_series(timestamps: np.ndarray,
 
 def plot_training_history(history: Dict[str, List[float]],
                          metrics: List[str] = ['loss', 'mae'],
-                         figsize: tuple = (15, 5)) -> None:
+                         figsize: tuple = (15, 5),
+                         save_path: Optional[str] = None,
+                         show: bool = True) -> None:
     """
     Plot training history for deep learning models.
     
@@ -72,15 +75,30 @@ def plot_training_history(history: Dict[str, List[float]],
         history: Training history dictionary
         metrics: List of metrics to plot
         figsize: Figure size
+        save_path: Optional file path to save the generated plot
+        show: Whether to display the plot. If False, the figure will be closed after saving.
     """
+    # Handle missing or None history gracefully
+    if history is None or len(history) == 0:
+        if show:
+            print("[plot_training_history] No history data to plot.")
+        return
+
     fig, axes = plt.subplots(1, len(metrics), figsize=figsize)
     if len(metrics) == 1:
         axes = [axes]
     
     for ax, metric in zip(axes, metrics):
-        ax.plot(history[metric], label='Training')
+        # Skip metrics that are not present in history
+        if metric not in history and f'val_{metric}' not in history:
+            ax.axis('off')  # Hide unused subplot
+            continue
+
+        if metric in history:
+            ax.plot(history[metric], label='Training')
         if f'val_{metric}' in history:
             ax.plot(history[f'val_{metric}'], label='Validation')
+
         ax.set_title(f'{metric.upper()}')
         ax.set_xlabel('Epoch')
         ax.set_ylabel(metric)
@@ -88,7 +106,14 @@ def plot_training_history(history: Dict[str, List[float]],
         ax.grid(True)
     
     plt.tight_layout()
-    plt.show()
+    # Save figure if requested
+    if save_path:
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path)
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 def plot_predictions(y_true: np.ndarray,
                     y_pred: np.ndarray,

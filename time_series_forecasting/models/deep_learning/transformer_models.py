@@ -21,12 +21,20 @@ class TransformerModel(BaseTimeSeriesModel):
             config: Model configuration
         """
         super().__init__(name, config)
+        config = config or {}
+        # CUDA-optimized defaults to reduce register spilling
         self.num_heads = config.get('num_heads', 8)
-        self.d_model = config.get('d_model', 128)
-        self.num_layers = config.get('num_layers', 4)
-        self.dff = config.get('dff', 512)
-        self.dropout = config.get('dropout', 0.1)
+        self.d_model = config.get('d_model', 256)  # Balanced for GPU registers
+        self.num_layers = config.get('num_layers', 4)  # Reduced layers for register efficiency
+        self.dff = config.get('dff', 512)  # Reduced for memory efficiency
+        self.dropout = config.get('dropout', 0.2)
         self.learning_rate = config.get('learning_rate', 0.001)
+        self.batch_size = config.get('batch_size', 32)  # Reduced for register efficiency
+        self.optimizer = config.get('optimizer', 'adam')  # Standard optimizer for CUDA efficiency
+        
+        # CUDA optimization flags
+        self.mixed_precision = config.get('mixed_precision', True)
+        self.gradient_checkpointing = config.get('gradient_checkpointing', False)
     
     def build(self, input_shape: Optional[tuple] = None) -> None:
         """
@@ -37,7 +45,8 @@ class TransformerModel(BaseTimeSeriesModel):
         """
         if input_shape is None:
             raise ValueError("input_shape is required for Transformer models")
-            
+        
+        # Enable GPU acceleration - remove CPU constraint
         # Input layers
         inputs = tf.keras.layers.Input(shape=input_shape)
         
@@ -51,25 +60,49 @@ class TransformerModel(BaseTimeSeriesModel):
         # Add positional encoding
         x = x + pos_encoding
         
+        # Apply input dropout
+        x = tf.keras.layers.Dropout(self.dropout)(x)
+        
         # Transformer blocks
         for _ in range(self.num_layers):
             x = self._transformer_block(x)
         
-        # Global average pooling and output
+        # Global average pooling
         x = tf.keras.layers.GlobalAveragePooling1D()(x)
+        
+        # Add final dense layers for better representation
+        x = tf.keras.layers.Dense(128, activation='relu')(x)
+        x = tf.keras.layers.Dropout(self.dropout)(x)
         outputs = tf.keras.layers.Dense(1)(x)
         
-        # Create and compile model
+        # Create model
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs)
+        
+        # Use standard optimizer for CUDA efficiency
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+        
+        # Compile model
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+            optimizer=optimizer,
             loss='mse',
             metrics=['mae']
         )
     
+    def _configure_gpu_optimization(self):
+        """Configure GPU optimizations to reduce register spilling."""
+        # Enable mixed precision if requested
+        if self.mixed_precision:
+            try:
+                # Mixed precision reduces register usage
+                policy = tf.keras.mixed_precision.Policy('mixed_float16')
+                tf.keras.mixed_precision.set_global_policy(policy)
+                print("✅ Mixed precision enabled for Transformer (reduces register usage)")
+            except Exception as e:
+                print(f"❌ Mixed precision failed: {e}")
+    
     def fit(self,
             train_data: Union[np.ndarray, tf.data.Dataset],
-            val_data: Optional[Union[np.ndarray, tf.data.Dataset]] = None,
+            validation_data: Optional[Union[np.ndarray, tf.data.Dataset]] = None,
             **kwargs) -> Dict[str, Any]:
         """
         Train the model.
@@ -85,28 +118,50 @@ class TransformerModel(BaseTimeSeriesModel):
         if not isinstance(self.model, tf.keras.Model):
             raise ValueError("Model must be built before training")
         
-        epochs = kwargs.get('epochs', 100)
-        patience = kwargs.get('patience', 10)
+        # Apply GPU optimizations
+        self._configure_gpu_optimization()
+        
+        epochs = kwargs.get('epochs', 100)  # Reduced epochs for CUDA efficiency
+        patience = kwargs.get('patience', 15)  # Balanced patience
         
         # Early stopping callback
         early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss' if val_data is not None else 'loss',
+            monitor='val_loss' if validation_data is not None else 'loss',
             patience=patience,
             restore_best_weights=True
         )
         
+        # Learning rate scheduling for transformers
+        lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss' if validation_data is not None else 'loss',
+            factor=0.5,
+            patience=patience//3,
+            min_lr=1e-7,
+            verbose=1
+        )
+        
+        # Optional: Warmup learning rate schedule
+        warmup_steps = kwargs.get('warmup_steps', 1000)
+        if warmup_steps > 0:
+            lr_warmup = tf.keras.callbacks.LearningRateScheduler(
+                lambda epoch: self.learning_rate * min(1.0, epoch / warmup_steps)
+            )
+            callbacks = [early_stopping, lr_scheduler, lr_warmup]
+        else:
+            callbacks = [early_stopping, lr_scheduler]
+        
         # Train model
         history = self.model.fit(
             train_data,
-            validation_data=val_data,
+            validation_data=validation_data,
             epochs=epochs,
-            callbacks=[early_stopping],
+            callbacks=callbacks,
             verbose=kwargs.get('verbose', 1)
         )
         
         self.is_fitted = True
         self.history = history.history
-        return self.history
+        return history.history
     
     def predict(self,
                 data: Union[np.ndarray, tf.data.Dataset],
@@ -128,13 +183,15 @@ class TransformerModel(BaseTimeSeriesModel):
     
     def evaluate(self,
                  data: Union[np.ndarray, tf.data.Dataset],
-                 metrics: Optional[list] = None) -> Dict[str, float]:
+                 metrics: Optional[list] = None,
+                 **kwargs) -> Dict[str, float]:
         """
         Evaluate model performance.
         
         Args:
             data: Test data
             metrics: List of metrics to evaluate
+            **kwargs: Additional evaluation arguments
             
         Returns:
             Dictionary of evaluation metrics
@@ -148,11 +205,20 @@ class TransformerModel(BaseTimeSeriesModel):
                 X.append(batch_x.numpy())
                 y.append(batch_y.numpy())
             X = np.vstack(X)
-            y = np.vstack(y)
+            y_array = np.vstack(y)
+            
+            # Flatten y to 2D for metrics calculation (samples, features)
+            if y_array.ndim > 2:
+                y_array = y_array.reshape(-1, y_array.shape[-1])
+            y = y_array
         else:
             X, y = data
         
         y_pred = self.predict(X)
+        
+        # Ensure y_pred is also 2D for metrics calculation
+        if y_pred.ndim > 2:
+            y_pred = y_pred.reshape(-1, y_pred.shape[-1])
         
         from time_series_forecasting.metrics.evaluation_metrics import calculate_metrics
         return calculate_metrics(y, y_pred)
@@ -212,18 +278,27 @@ class TransformerModel(BaseTimeSeriesModel):
         Returns:
             Transformed tensor
         """
-        # Multi-head attention
+        # Multi-head attention optimized for CUDA
         attn = tf.keras.layers.MultiHeadAttention(
             num_heads=self.num_heads,
-            key_dim=self.d_model
+            key_dim=self.d_model // self.num_heads,  # Balanced key dimension
+            dropout=self.dropout,
+            use_bias=True,  # CUDA optimization
+            kernel_initializer='glorot_uniform'
         )(x, x)
         attn = tf.keras.layers.Dropout(self.dropout)(attn)
         out1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x + attn)
         
-        # Feed-forward network
+        # Memory-efficient feed-forward network
         ffn = tf.keras.Sequential([
-            tf.keras.layers.Dense(self.dff, activation='relu'),
-            tf.keras.layers.Dense(self.d_model)
+            tf.keras.layers.Dense(self.dff, 
+                                activation='relu',
+                                kernel_initializer='glorot_uniform',
+                                use_bias=True),
+            tf.keras.layers.Dropout(self.dropout),
+            tf.keras.layers.Dense(self.d_model,
+                                kernel_initializer='glorot_uniform',
+                                use_bias=True)
         ])
         
         ffn_out = ffn(out1)

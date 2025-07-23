@@ -1,8 +1,8 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import tensorflow as tf
 from tensorflow import keras
 
-from .deep_models import DeepLearningBaseModel
+from time_series_forecasting.models.base.base_model import BaseTimeSeriesModel
 
 class MultiHeadAttention(keras.layers.Layer):
     """Multi-head attention layer."""
@@ -79,7 +79,7 @@ class TransformerBlock(keras.layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 
-class TransformerModel(DeepLearningBaseModel):
+class TransformerModel(BaseTimeSeriesModel):
     """Transformer model for time series forecasting."""
     
     def __init__(self,
@@ -95,7 +95,7 @@ class TransformerModel(DeepLearningBaseModel):
         self.dff = dff
         self.dropout = dropout
     
-    def build(self, input_shape: tuple) -> None:
+    def build(self, input_shape: Optional[tuple] = None) -> None:
         """Build transformer model."""
         inputs = keras.Input(shape=input_shape)
         x = inputs
@@ -116,4 +116,8 @@ class TransformerModel(DeepLearningBaseModel):
         outputs = keras.layers.Dense(1)(x)
         
         self.model = keras.Model(inputs=inputs, outputs=outputs)
-        self.compile_model() 
+        self.model.compile(
+            optimizer='adam',
+            loss='mse',
+            metrics=['mae']
+        ) 
